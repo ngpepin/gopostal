@@ -1,4 +1,35 @@
-﻿/// <summary>
+﻿// #define ANON
+#if ANON
+// The method bodies, field initializers, and property accessor bodies have been eliminated for brevity.
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using System.Text.Json.Serialization.Metadata;
+using Newtonsoft.Json;
+class Program
+{
+    private static readonly string ConfigFilePath;
+
+    static async Task Main(string[] args);
+    private static string GetArgValue(string[] args, string key);
+    private static JObject LoadConfiguration(string filePath);
+    private static async Task<(string From, string To)> NormalizeAddress(string apiKey, string secret, string customerNumber,
+            (string Street, string City, string Province, string PostalCode) fromComponents,
+            (string Street, string City, string Province, string PostalCode) toComponents);
+    private static async Task<decimal> GetExchangeRate();
+    private static async Task<string> GetShippingCosts(string apiUrl, string apiKey, string password, string customerNumber,
+            string fromPostalCode, string toPostalCode, double weightInKg, double length, double width, double height, string countryCode = "CA");
+    private static void DisplayRateResponse(string xmlResponse, decimal exchangeRate, string destinationCountry);
+    private static (string Street, string City, string Region, string PostalCode) ParseAddress(string address);
+    private static string DetectCountry(string postalCode);
+}
+
+/// <summary>
 /// This application calculates shipping costs using the Canada Post API.
 /// It takes command line arguments for package dimensions, weight, and destination address.
 /// Optionally, a from address can be provided; otherwise, a default from address is used from the configuration file.
@@ -169,16 +200,13 @@ class Program
                 // Pre-populated JSON content
                 var defaultConfig = @"
             {
-              ""CanadaPost"": {
-                ""ApiKey"": ""cd859ff5f9591fb4"",
-                ""Secret"": ""897eb82fe9021caf68b563"",
-                ""CustomerNumber"": ""0006123879"",
-                ""Endpoint"": ""https://ct.soa-gw.canadapost.ca/rs/ship/price"",
-                ""DefaultFromAddress"": {
-                  ""Street"": ""294 Besserer Street"",
-                  ""City"": ""Ottawa"",
-                  ""Province"": ""ON"",
-                  ""PostalCode"": ""K1N6B3""
+                     ""CanadaPost"":   ""ApiKey"": ""your_api_key"",
+                     ""Secret"": ""your_secret"",
+                     ""CustomerNumber"": ""your_customer_number"",
+                     ""Endpoint"": ""  ""DefaultFromAddress"":     ""Street"": ""your_street"",
+                     ""City"": ""your_city"",
+                     ""Province"": ""your_province"",
+                     ""PostalCode"": ""your_postal_code""
                 }
               }
             }";
@@ -334,81 +362,7 @@ class Program
 
         // Output header
         Console.WriteLine("\n\n--- CANADA POST Options and Costs for Canadian and US Shipping Addresses ---");
-        Console.WriteLine("Service Name           |   Cost (CAD) |   Cost (USD) | Delivery Days |  Delivery Date  | Liability Coverage");
-        Console.WriteLine(new string('-', 110));  // Underline the header with proper spacing
-
-        foreach (var quote in quotes)
-        {
-            // Extract service name
-            var serviceName = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-name")?.Value;
-
-            // Extract the total cost (due) in CAD
-            var dueAmount = decimal.Parse(quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}price-details")
-                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}due").Value);
-
-            // Add HST
-            dueAmount = dueAmount * 1.13m;
-
-            // If the destination is in Canada, display 'n/a' for Cost in USD, otherwise calculate USD
-            var costInUsd = destinationCountry == "CA" ? "n/a" : Math.Round(dueAmount * exchangeRate, 2).ToString("0.00");
-
-            // Extract expected delivery time
-            var deliveryDays = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-standard")
-                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}expected-transit-time")?.Value ?? "n/a";
-
-            // Adjust delivery days to center it within 7 characters (with extra spaces)
-            deliveryDays = deliveryDays.PadLeft((7 + deliveryDays.Length) / 2).PadRight(7);
-
-            // Extract expected delivery date
-            var deliveryDate = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-standard")
-                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}expected-delivery-date")?.Value ?? "n/a";
-
-            // Adjust delivery date to have uniform spacing
-            deliveryDate = " " + deliveryDate.PadRight(12);  // Add one leading space for extra padding
-
-            // Extract liability coverage (keep blank as per your request)
-            var liabilityCoverage = ""; // Blank for now
-
-            // Output the details in a formatted table with aligned decimal points
-            if (destinationCountry == "CA")
-            {
-                Console.WriteLine($"{serviceName,-22} | {dueAmount,12:0.00} | {"n/a",12} |    {deliveryDays}    |  {deliveryDate}  | {liabilityCoverage}");
-            }
-            else
-            {
-                Console.WriteLine($"{serviceName,-22} | {dueAmount,12:0.00} | {costInUsd,12} |    {deliveryDays}    |  {deliveryDate}  | {liabilityCoverage}");
-            }
-        }
     }
-
-
-    private static (string Street, string City, string Region, string PostalCode) ParseAddress(string address)
-    {
-        // Updated regex to handle no comma between state/province and postal code, including optional hyphen in postal codes
-        var regex = new Regex(@"^(?<Street>[^,]+),\s*(?<City>[^,]+),\s*(?<Region>[A-Z]{2}),?\s*(?<PostalCode>\d{5}(-\d{4})?|\w{3}\s?\w{3})$");
-        var match = regex.Match(address);
-
-        // If the format doesn't match, throw a detailed error message
-        if (!match.Success)
-        {
-            throw new ArgumentException($"Invalid address format: '{address}'. Expected format: 'Street, City, Province/State, PostalCode'.");
-        }
-
-        // Extract the components from the regex match groups
-        var street = match.Groups["Street"].Value;
-        var city = match.Groups["City"].Value;
-        var region = match.Groups["Region"].Value; // Province (Canada) or State (US)
-        var postalCode = match.Groups["PostalCode"].Value.Trim().Replace(" ", "");
-
-        return (street, city, region, postalCode);
-    }
-    private static string DetectCountry(string postalCode)
-    {
-        // Simple detection: US if numeric, Canada if alphanumeric
-        if (System.Text.RegularExpressions.Regex.IsMatch(postalCode.Trim(), @"^\d{5}(-\d{4})?$"))
-        {
-            return "US";
-        }
-        return "CA";  // Assume Canada if it's not in US format
-    }
+}
+#endif
 }
