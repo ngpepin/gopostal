@@ -80,7 +80,6 @@
 /// ============================================================================
 /// </summary>
 
-
 using System;
 using System.IO;
 using System.Net.Http;
@@ -184,7 +183,12 @@ class Program
         // Calculate shipping costs
         var xmlResponse = await GetShippingCosts(endpoint, apiKey, secret, customerNumber, fromPostalCode, toPostalCode, weight, length, width, height, destinationCountry);
 
-        // Display the formatted shipping options
+        // Before displaying the rate response table, print the "from" and "to" addresses
+        Console.WriteLine("\n--- Address Confirmation ---");
+        Console.WriteLine($"From Address: {normalizedAddresses.From}");
+        Console.WriteLine($"To Address: {normalizedAddresses.To}");
+
+        // Then proceed to display the shipping options
         DisplayRateResponse(xmlResponse, exchangeRate, destinationCountry);
     }
 
@@ -348,6 +352,7 @@ class Program
             return string.Empty;  // Return an empty string if an exception occurs
         }
     }
+    
     private static void DisplayRateResponse(string xmlResponse, decimal exchangeRate, string destinationCountry)
     {
         if (string.IsNullOrEmpty(xmlResponse))
@@ -427,7 +432,6 @@ class Program
         }
     }
 
-
     private static (string Street, string City, string Region, string PostalCode) ParseAddress(string address)
     {
         // Updated regex to handle no comma between state/province and postal code, including optional hyphen in postal codes
@@ -448,6 +452,7 @@ class Program
 
         return (street, city, region, postalCode);
     }
+    
     private static string DetectCountry(string postalCode)
     {
         // Simple detection: US if numeric, Canada if alphanumeric
