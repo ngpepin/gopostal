@@ -1,21 +1,28 @@
 ﻿/// <summary>
-/// This application calculates shipping costs using the Canada Post API.
-/// It takes command line arguments for package dimensions, weight, and destination address.
-/// Optionally, a from address can be provided; otherwise, a default from address is used from the configuration file.
-/// 
-/// Usage:
+/// ========================= Application Overview =========================
+/// This application calculates shipping costs using the Canada Post API. 
+/// It takes command line arguments for package dimensions, weight, and 
+/// destination address. Optionally, a "from" address can be provided; 
+/// otherwise, a default "from" address is used from the configuration file.
+///
+/// USAGE:
 /// -w <width> -l <length> -h <height> -m <weight> -t '<to address>' [-f '<from address>']
 /// 
-/// Dependencies:
+/// /// Example:
+/// dotnet run -w 10 -l 20 -h 15 -m 500 -t '123 Main St, Anytown, ON, A1A1A1' -f '456 Elm St, Othertown, BC, B2B2B2'
+///
+/// DEPENDENCIES:
 /// - System.Net.Http: For making HTTP requests to external APIs.
 /// - Newtonsoft.Json: For JSON parsing and serialization.
 /// - System.Xml.Linq: For XML manipulation.
-/// 
-/// Configuration:
-/// The application expects a configuration file located at:
+///
+/// CONFIGURATION:
+/// The application creates a configuration file located at:
 /// $HOME/.config/gopostal/gopostal.conf
 /// 
-/// The configuration file should contain the following JSON structure:
+/// This configuration file can be subsequently edited by the user.
+///
+/// The configuration file contains the following JSON structure:
 /// {
 ///   "CanadaPost": {
 ///     "ApiKey": "your_api_key",
@@ -30,9 +37,47 @@
 ///     }
 ///   }
 /// }
-/// 
-/// Example:
-/// dotnet run -w 10 -l 20 -h 15 -m 500 -t '123 Main St, Anytown, ON, A1A1A1' -f '456 Elm St, Othertown, BC, B2B2B2'
+///
+/// However, before running the application, a `secrets.cs` file must be created.
+/// This file is excluded from version control via `.gitignore` and must contain
+/// the required secrets and API keys to initially populate the configuration file
+/// JSON structure correctly.
+///
+/// --------------------- Steps to Create `secrets.cs` ------------------------
+///
+/// 1. Create a file named `secrets.cs` in the same directory as `Program.cs`.
+/// 2. Define a public static class `Secrets` with static readonly fields containing
+///    your API credentials and default address values.
+///
+/// Example of `secrets.cs`:
+///
+/// public static class Secrets
+/// {
+///     public static readonly string ApiKey = "your_api_key";
+///     public static readonly string Secret = "your_secret";
+///     public static readonly string CustomerNumber = "your_customer_number";
+///     public static readonly string Endpoint = "https://ct.soa-gw.canadapost.ca/rs/ship/price";
+///     public static readonly string Street = "your_street";
+///     public static readonly string City = "your_city";
+///     public static readonly string Province = "your_province";
+///     public static readonly string PostalCode = "your_postal_code";
+/// }
+///
+/// 3. The program uses the values from `secrets.cs` to populate the initial
+///    configuration file located at:
+///    $HOME/.config/gopostal/gopostal.conf
+///
+/// -------------------- Add `secrets.cs` to `.gitignore` ---------------------
+///
+/// Make sure that `secrets.cs` is added to your `.gitignore` file to prevent it
+/// from being tracked in version control. This ensures that sensitive API keys
+/// and personal data are not exposed.
+///
+/// Add the following line to `.gitignore`:
+///
+/// secrets.cs
+///
+/// ============================================================================
 /// </summary>
 
 
@@ -148,6 +193,7 @@ class Program
         var index = Array.IndexOf(args, key);
         return (index != -1 && args.Length > index + 1) ? args[index + 1] : string.Empty;
     }
+
     private static JObject LoadConfiguration(string filePath)
     {
         try
@@ -166,22 +212,22 @@ class Program
 
             if (!File.Exists(filePath))
             {
-                // Pre-populated JSON content
-                var defaultConfig = @"
-            {
-              ""CanadaPost"": {
-                ""ApiKey"": ""cd859ff5f9591fb4"",
-                ""Secret"": ""897eb82fe9021caf68b563"",
-                ""CustomerNumber"": ""0006123879"",
-                ""Endpoint"": ""https://ct.soa-gw.canadapost.ca/rs/ship/price"",
-                ""DefaultFromAddress"": {
-                  ""Street"": ""294 Besserer Street"",
-                  ""City"": ""Ottawa"",
-                  ""Province"": ""ON"",
-                  ""PostalCode"": ""K1N6B3""
-                }
-              }
-            }";
+                // Pre-populated JSON content using the Secrets class
+                var defaultConfig = $@"
+            {{
+              ""CanadaPost"": {{
+                ""ApiKey"": ""{Secrets.ApiKey}"",
+                ""Secret"": ""{Secrets.Secret}"",
+                ""CustomerNumber"": ""{Secrets.CustomerNumber}"",
+                ""Endpoint"": ""{Secrets.Endpoint}"",
+                ""DefaultFromAddress"": {{
+                  ""Street"": ""{Secrets.Street}"",
+                  ""City"": ""{Secrets.City}"",
+                  ""Province"": ""{Secrets.Province}"",
+                  ""PostalCode"": ""{Secrets.PostalCode}""
+                }}
+              }}
+            }}";
 
                 // Write the default configuration to the file
                 File.WriteAllText(filePath, defaultConfig);
