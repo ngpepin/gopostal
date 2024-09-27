@@ -177,7 +177,6 @@ class Program
         if (destinationCountry == "US")
         {
             exchangeRate = await GetExchangeRate();
-            Console.WriteLine($"\nExchange Rate (CAD to USD): {exchangeRate}");
         }
 
         // Calculate shipping costs
@@ -185,8 +184,13 @@ class Program
 
         // Before displaying the rate response table, print the "from" and "to" addresses
         Console.WriteLine("\n*** CANADA POST Delivery Options and Costs for Canadian and US Shipping Addresses ***");
-        Console.WriteLine($"\nFrom Address: {normalizedAddresses.From}");
-        Console.WriteLine($"To Address:   {normalizedAddresses.To}");
+        Console.WriteLine($"\nFrom Address:               {normalizedAddresses.From}");
+        Console.WriteLine($"To Address:                 {normalizedAddresses.To}");
+
+        if (destinationCountry == "US")
+        {
+        Console.WriteLine($"\nExchange Rate (CAD to USD): {exchangeRate}");
+        }
 
         // Then proceed to display the shipping options
         DisplayRateResponse(xmlResponse, exchangeRate, destinationCountry);
