@@ -184,9 +184,9 @@ class Program
         var xmlResponse = await GetShippingCosts(endpoint, apiKey, secret, customerNumber, fromPostalCode, toPostalCode, weight, length, width, height, destinationCountry);
 
         // Before displaying the rate response table, print the "from" and "to" addresses
-        Console.WriteLine("\n--- Address Confirmation ---");
-        Console.WriteLine($"From Address: {normalizedAddresses.From}");
-        Console.WriteLine($"To Address: {normalizedAddresses.To}");
+        Console.WriteLine("\n*** CANADA POST Delivery Options and Costs for Canadian and US Shipping Addresses ***");
+        Console.WriteLine($"\nFrom Address: {normalizedAddresses.From}");
+        Console.WriteLine($"To Address:   {normalizedAddresses.To}");
 
         // Then proceed to display the shipping options
         DisplayRateResponse(xmlResponse, exchangeRate, destinationCountry);
@@ -399,9 +399,10 @@ class Program
         var sortedQuotes = quotes.OrderBy(q => q.DueAmountCAD).ToList();
 
         // Output header
-        Console.WriteLine("\n\n--- CANADA POST Options and Costs for Canadian and US Shipping Addresses ---");
-        Console.WriteLine("Service Name           |   Cost (CAD) |   Cost (USD) | Delivery Days |  Delivery Date  | Liability Coverage");
+     
+        Console.WriteLine("\nService Name           |   Cost (CAD) |   Cost (USD) | Delivery Days |  Delivery Date  | Liability Coverage");
         Console.WriteLine(new string('-', 110));  // Underline the header with proper spacing
+
 
         foreach (var quote in sortedQuotes)
         {
