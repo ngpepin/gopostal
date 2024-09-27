@@ -352,7 +352,7 @@ class Program
             return string.Empty;  // Return an empty string if an exception occurs
         }
     }
-    
+
     private static void DisplayRateResponse(string xmlResponse, decimal exchangeRate, string destinationCountry)
     {
         if (string.IsNullOrEmpty(xmlResponse))
@@ -381,56 +381,51 @@ class Program
         var xdoc = XDocument.Parse(xmlResponse);
 
         // Extract price-quote elements
-        var quotes = xdoc.Descendants("{http://www.canadapost.ca/ws/ship/rate-v4}price-quote");
+        var quotes = xdoc.Descendants("{http://www.canadapost.ca/ws/ship/rate-v4}price-quote")
+            .Select(quote => new
+            {
+                ServiceName = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-name")?.Value,
+                DueAmountCAD = decimal.Parse(quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}price-details")
+                                                .Element("{http://www.canadapost.ca/ws/ship/rate-v4}due").Value) * 1.13m, // Add HST
+                DeliveryDays = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-standard")
+                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}expected-transit-time")?.Value ?? "n/a",
+                DeliveryDate = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-standard")
+                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}expected-delivery-date")?.Value ?? "n/a",
+                LiabilityCoverage = "" // Blank for now
+            })
+            .ToList();
+
+        // Sort the quotes by DueAmountCAD
+        var sortedQuotes = quotes.OrderBy(q => q.DueAmountCAD).ToList();
 
         // Output header
         Console.WriteLine("\n\n--- CANADA POST Options and Costs for Canadian and US Shipping Addresses ---");
         Console.WriteLine("Service Name           |   Cost (CAD) |   Cost (USD) | Delivery Days |  Delivery Date  | Liability Coverage");
         Console.WriteLine(new string('-', 110));  // Underline the header with proper spacing
 
-        foreach (var quote in quotes)
+        foreach (var quote in sortedQuotes)
         {
-            // Extract service name
-            var serviceName = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-name")?.Value;
+            // Calculate cost in USD if applicable
+            var costInUsd = destinationCountry == "CA" ? "n/a" : Math.Round(quote.DueAmountCAD * exchangeRate, 2).ToString("0.00");
 
-            // Extract the total cost (due) in CAD
-            var dueAmount = decimal.Parse(quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}price-details")
-                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}due").Value);
-
-            // Add HST
-            dueAmount = dueAmount * 1.13m;
-
-            // If the destination is in Canada, display 'n/a' for Cost in USD, otherwise calculate USD
-            var costInUsd = destinationCountry == "CA" ? "n/a" : Math.Round(dueAmount * exchangeRate, 2).ToString("0.00");
-
-            // Extract expected delivery time
-            var deliveryDays = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-standard")
-                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}expected-transit-time")?.Value ?? "n/a";
-
-            // Adjust delivery days to center it within 7 characters (with extra spaces)
-            deliveryDays = deliveryDays.PadLeft((7 + deliveryDays.Length) / 2).PadRight(7);
-
-            // Extract expected delivery date
-            var deliveryDate = quote.Element("{http://www.canadapost.ca/ws/ship/rate-v4}service-standard")
-                                    .Element("{http://www.canadapost.ca/ws/ship/rate-v4}expected-delivery-date")?.Value ?? "n/a";
+            // Adjust delivery days to center it within 7 characters
+            var deliveryDays = quote.DeliveryDays.PadLeft((7 + quote.DeliveryDays.Length) / 2).PadRight(7);
 
             // Adjust delivery date to have uniform spacing
-            deliveryDate = " " + deliveryDate.PadRight(12);  // Add one leading space for extra padding
-
-            // Extract liability coverage (keep blank as per your request)
-            var liabilityCoverage = ""; // Blank for now
+            var deliveryDate = " " + quote.DeliveryDate.PadRight(12);  // Add one leading space for extra padding
 
             // Output the details in a formatted table with aligned decimal points
             if (destinationCountry == "CA")
             {
-                Console.WriteLine($"{serviceName,-22} | {dueAmount,12:0.00} | {"n/a",12} |    {deliveryDays}    |  {deliveryDate}  | {liabilityCoverage}");
+                Console.WriteLine($"{quote.ServiceName,-22} | {quote.DueAmountCAD,12:0.00} | {"n/a",12} |    {deliveryDays}    |  {deliveryDate}  | {quote.LiabilityCoverage}");
             }
             else
             {
-                Console.WriteLine($"{serviceName,-22} | {dueAmount,12:0.00} | {costInUsd,12} |    {deliveryDays}    |  {deliveryDate}  | {liabilityCoverage}");
+                Console.WriteLine($"{quote.ServiceName,-22} | {quote.DueAmountCAD,12:0.00} | {costInUsd,12} |    {deliveryDays}    |  {deliveryDate}  | {quote.LiabilityCoverage}");
             }
         }
     }
+
 
     private static (string Street, string City, string Region, string PostalCode) ParseAddress(string address)
     {

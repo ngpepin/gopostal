@@ -362,6 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# Ignore the secrets.cs file (from project)
-Secrets.cs
 /Secrets.cs
